@@ -1,0 +1,46 @@
+# Object files
+*.o
+*.ko
+
+# Libraries
+*.lib
+*.a
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+*.xpl
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Autotools
+Makefile
+Makefile.in
+.deps
+.libs
+*.la
+*.lo
+/aclocal.m4
+/configure
+/config.*
+/autom4te.cache
+/libtool
+/stamp-h1
+.dirstamp
+/build-aux/*
+
+# installed .m4 files
+/m4/*.m4
+!/m4/.keep
+
+# tarballs
+xpacars-*.tar.*
+xpacars-*.zip
+
+# X-Plane SDK
+/SDK/
