@@ -32,7 +32,7 @@ The user and password should be provided in the URL.
 
 ```c
 /**
- * xpacars protocol, version 1
+ * xpacars protocol, version 0
  *
  * This is the definition of our protocol. All the fields are separated with
  * a newline '\n' character.
