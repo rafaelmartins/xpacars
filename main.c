@@ -2,22 +2,23 @@
 #include <config.h>
 #endif /* HAVE_CONFIG_H */
 
+#define XPLM210 1
+#define XPLM301 1
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <curl/curl.h>
-#include <XPLM/XPLMDataAccess.h>
-#include <XPLM/XPLMMenus.h>
-#include <XPLM/XPLMProcessing.h>
-#include <XPLM/XPLMUtilities.h>
+#include <XPLMDataAccess.h>
+#include <XPLMMenus.h>
+#include <XPLMProcessing.h>
+#include <XPLMUtilities.h>
+#include <XPLMNavigation.h>
 
 typedef struct {
+    char airport_icao[32];
     char aircraft_icao[40];
-    char aircraft_tailnum[40];
-    char aircraft_description[260];
-    // want to add origin and destination here too, but need to figure a simple
-    // way to ask users to input it.
 } flight_data_t;
 
 typedef struct {
@@ -67,18 +68,17 @@ static int status_index;
 /**
  * Content-Type: application/vnd.xpacars.flight
  *
- * This request registers a new flight in the server. It just contains the
- * aircraft data for now, but information about origin airport and destination
- * aiport should be added in a new version of the protocol.
+ * This request registers a new flight from the server. It just contains the
+ * aircraft ICAO and the airport ICAO.
  *
- * The server should return 201 to notify that the new flight was registered,
- * and the ID of the flight, that will be used by the upcoming requests.
+ * The server should return status code 200 to notify that there is a flight
+ * for the given aircraft from the current airport, and the ID of the flight
+ * in the body of the response, that will be used by the upcoming requests.
  */
 const char *flight_format =
     "1\n"   // protocol version
-    "%s\n"  // aircraft icao
-    "%s\n"  // aircraft tailnum
-    "%s\n"  // aircraft description
+    "%s\n"  // airport ICAO
+    "%s\n"  // aircraft ICAO
     "";
 
 /**
@@ -133,8 +133,8 @@ SendFlightData(const char *url, flight_data_t *data)
     if (url == NULL || data == NULL)
         return false;
 
-    int body_len = snprintf(NULL, 0, flight_format, data->aircraft_icao,
-        data->aircraft_tailnum, data->aircraft_description);
+    int body_len = snprintf(NULL, 0, flight_format, data->airport_icao,
+        data->aircraft_icao);
 
     if (body_len <= 0)
         return false;
@@ -143,8 +143,8 @@ SendFlightData(const char *url, flight_data_t *data)
     if (body == NULL)
         return false;
 
-    snprintf(body, body_len + 1, flight_format, data->aircraft_icao,
-        data->aircraft_tailnum, data->aircraft_description);
+    snprintf(body, body_len + 1, flight_format, data->airport_icao,
+         data->aircraft_icao);
 
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers,
@@ -168,7 +168,7 @@ SendFlightData(const char *url, flight_data_t *data)
     if (rv) {
         long http_code = 0;
         curl_easy_getinfo(hnd, CURLINFO_RESPONSE_CODE, &http_code);
-        rv = http_code == 201;
+        rv = http_code == 200;
         if (rv) {
             long long int tmp_id = strtoll(buf.str, NULL, 10);
             if (tmp_id >= 1)
@@ -296,18 +296,28 @@ FlightLoopCallback(float elapsedMe, float elapsedSim, int counter, void *refcon)
 
     if (flight_id == -1) {
         flight_data_t flight_data;
+        float lat = XPLMGetDataf(latitude_dr);
+        float lon = XPLMGetDataf(longitude_dr);
+        XPLMNavRef origin_airport = XPLMFindNavAid(NULL, NULL, &lat, &lon, NULL,
+            xplm_Nav_Airport);
+        if (origin_airport == XPLM_NAV_NOT_FOUND)
+            return time;
+
+        XPLMGetNavAidInfo(origin_airport, NULL, NULL, NULL, NULL, NULL, NULL,
+            flight_data.airport_icao, NULL, NULL);
+
         XPLMGetDatab(aircraft_icao_dr, flight_data.aircraft_icao, 0, 40);
         if (flight_data.aircraft_icao == NULL)
             return time;
 
-        XPLMGetDatab(aircraft_tailnum_dr, flight_data.aircraft_tailnum, 0, 40);
+        /*XPLMGetDatab(aircraft_tailnum_dr, flight_data.aircraft_tailnum, 0, 40);
         if (flight_data.aircraft_tailnum == NULL)
             return time;
 
         XPLMGetDatab(aircraft_description_dr, flight_data.aircraft_description,
             0, 260);
         if (flight_data.aircraft_description == NULL)
-            return time;
+            return time;*/
 
         if (!SendFlightData(str_strip(url), &flight_data) || flight_id == -1) {
             XPLMSetMenuItemName(status_menu, status_index,

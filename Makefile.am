@@ -21,10 +21,10 @@ xpacars_la_SOURCES = \
 xpacars_la_CFLAGS = \
 	$(AM_CFLAGS) \
 	$(LIBCURL_CFLAGS) \
-	-I$(top_srcdir)/SDK/CHeaders \
+	-I$(top_srcdir)/SDK/CHeaders/XPLM \
+	-I$(top_srcdir)/SDK/CHeaders/Widgets \
 	-fvisibility=hidden \
 	-DLIN=1 \
-	-DXPLM210=1 \
 	$(NULL)
 
 xpacars_la_LIBADD = \
